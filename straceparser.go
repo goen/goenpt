@@ -2,11 +2,13 @@ package main
 
 import (
 	"bufio"
+	"encoding/gob"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
-func sysfun2int(s []byte) uint16 {
+func Sysfun2int(s []byte) uint16 {
 	//	fmt.Println(">>",s,"<<")
 	switch string(s) {
 	case "execve":
@@ -15,17 +17,17 @@ func sysfun2int(s []byte) uint16 {
 		return 61
 	case "clone":
 		return 56
-	case "rt_sigreturn":
+	case "rt_Sigreturn":
 		return 15
 	case "arch_prctl":
 		return 158
 	case "exit_group":
 		return 231
-	case "rt_sigaction":
+	case "rt_Sigaction":
 		return 13
-	case "rt_sigprocmask":
+	case "rt_Sigprocmask":
 		return 14
-	case "sigaltstack":
+	case "Sigaltstack":
 		return 131
 	case "vfork":
 		return 58
@@ -34,97 +36,97 @@ func sysfun2int(s []byte) uint16 {
 	}
 }
 
-func syssig2int(s []byte) uint8 {
+func sysSig2int(s []byte) uint8 {
 	//	fmt.Println(">>",string(s),"<<")
 	switch string(s) {
-	case "SIGABRT":
+	case "SigABRT":
 		return 6
-	case "SIGALRM":
+	case "SigALRM":
 		return 14
-	case "SIGFPE":
+	case "SigFPE":
 		return 8
-	case "SIGHUP":
+	case "SigHUP":
 		return 1
-	case "SIGILL":
+	case "SigILL":
 		return 4
-	case "SIGINT":
+	case "SigINT":
 		return 2
-	case "SIGKILL":
+	case "SigKILL":
 		return 9
-	case "SIGPIPE":
+	case "SigPIPE":
 		return 13
-	case "SIGQUIT":
+	case "SigQUIT":
 		return 3
-	case "SIGSEGV":
+	case "SigSEGV":
 		return 11
-	case "SIGTERM":
+	case "SigTERM":
 		return 15
-	case "SIGTTOU":
+	case "SigTTOU":
 		return 22
-	case "SIGTSTP":
+	case "SigTSTP":
 		return 20
-	case "SIGCONT":
+	case "SigCONT":
 		return 18
-	case "SIGSTOP":
+	case "SigSTOP":
 		return 19
-	case "SIGCHLD":
+	case "SigCHLD":
 		return 17
-	case "SIGUSR2":
+	case "SigUSR2":
 		return 31
-	case "SIGUSR1":
+	case "SigUSR1":
 		return 30
-	case "SIGBUS":
+	case "SigBUS":
 		return 101
-	case "SIGINFO":
+	case "SigINFO":
 		return 102
-	case "SIGIO":
+	case "SigIO":
 		return 103
-	case "SIGNALED":
+	case "SignalED":
 		return 104
-	case "SIGPROF":
+	case "SigPROF":
 		return 105
-	case "SIGPWR":
+	case "SigPWR":
 		return 106
-	case "SIGRT":
+	case "SigRT":
 		return 107
-	case "SIGRTMIN":
+	case "SigRTMIN":
 		return 108
-	case "SIGSTKFLT":
+	case "SigSTKFLT":
 		return 109
-	case "SIGSYS":
+	case "SigSYS":
 		return 110
-	case "SIGTRAP":
+	case "SigTRAP":
 		return 111
-	case "SIGTTIN":
+	case "SigTTIN":
 		return 112
-	case "SIGURG":
+	case "SigURG":
 		return 113
-	case "SIGUSR":
+	case "SigUSR":
 		return 114
-	case "SIGVTALRM":
+	case "SigVTALRM":
 		return 115
-	case "SIGWINCH":
+	case "SigWINCH":
 		return 116
-	case "SIGXCPU":
+	case "SigXCPU":
 		return 117
-	case "SIGXFSZ":
+	case "SigXFSZ":
 		return 118
 	default:
 		return 0
 	}
 }
 
-type fun struct {
-	tid        uint32 //thread specific id
-	sysfun     uint16 // platform specific syscall id
-	reterr     int64  // return error code /child's tid
-	sig        uint8
-	sec        uint64
-	nsec       uint32
-	unfinished bool //beginning
-	resumed    bool //end
-	signal     bool
-	xargs []string //exec & args
+type Fun struct {
+	Tid        uint32 //thread specific id
+	Sysfun     uint16 // platform specific syscall id
+	Reterr     int64  // return error code /child's Tid
+	Sig        uint8
+	Sec        uint64
+	NSec       uint32
+	Unfinished bool //beginning
+	Resumed    bool //end
+	Signal     bool
+	Xargs      []string //exec & args
 }
 
 func fromHexChar(c byte) (byte, byte) {
@@ -233,7 +235,7 @@ func seek5(s *[]byte) (o []byte) {
 	return o
 }
 
-func parse(s []byte) (f fun) {
+func parse(s []byte) (f Fun) {
 
 	seek0(&s, 10)
 
@@ -242,20 +244,20 @@ func parse(s []byte) (f fun) {
 	if len(s) >= 1 && s[0] == '[' {
 
 		//pid done
-		fmt.Sscanf(string(s), "[pid%d]", &f.tid)
+		fmt.Sscanf(string(s), "[pid%d]", &f.Tid)
 
-		for f.tid != 0 && seek1(&s) {
+		for f.Tid != 0 && seek1(&s) {
 		}
 
 	} else {
 		//pid done
-		fmt.Sscanf(string(s), "%d ", &f.tid)
+		fmt.Sscanf(string(s), "%d ", &f.Tid)
 
 		seek2(&s, ' ')
 	}
 
 	//time done
-	fmt.Sscanf(string(s), "%d.%d", &f.sec, &f.nsec)
+	fmt.Sscanf(string(s), "%d.%d", &f.Sec, &f.NSec)
 
 	seek2(&s, ' ')
 
@@ -263,44 +265,44 @@ func parse(s []byte) (f fun) {
 		return
 	}
 
-	//	fmt.Println("||pid ts tn", f.tid, f.sec, f.nsec)
+	//	fmt.Println("||pid ts tn", f.Tid, f.Sec, f.NSec)
 
-	var sysfunstr []byte
+	var Sysfunstr []byte
 	var sysretstr []byte
-	var syssig []byte
+	var sysSig []byte
 	var sysattr []byte
 	switch s[0] {
 	case '+':
 		//exited done
-		fmt.Sscanf(string(s), "+++ exited with %d +++", &f.reterr)
-		f.sysfun = 1 //exit
+		fmt.Sscanf(string(s), "+++ exited with %d +++", &f.Reterr)
+		f.Sysfun = 1 //exit
 		return
 	case '-':
-		f.signal = true
+		f.Signal = true
 
 		seek2(&s, '-')
 		seek2(&s, ' ')
-		syssig = seek3(&s, ' ')
-		f.sig = syssig2int(syssig)
+		sysSig = seek3(&s, ' ')
+		f.Sig = sysSig2int(sysSig)
 
-		// FIXME: handle the signal type & child
-		//		fmt.Println("FIXME SIGNAL:",string(s))
+		// FIXME: handle the Signal type & child
+		//		fmt.Println("FIXME Signal:",string(s))
 		return
 	case '<':
-		fmt.Sscanf(string(s), "<... %s resumed>", &sysfunstr)
-		f.sysfun = sysfun2int(sysfunstr)
-		f.resumed = true
+		fmt.Sscanf(string(s), "<... %s Resumed>", &Sysfunstr)
+		f.Sysfun = Sysfun2int(Sysfunstr)
+		f.Resumed = true
 		seek2(&s, ' ')
 		seek2(&s, ' ')
 		seek2(&s, ' ')
 
 	default:
-		sysfunstr = seek3(&s, '(')
-		f.sysfun = sysfun2int(sysfunstr)
+		Sysfunstr = seek3(&s, '(')
+		f.Sysfun = Sysfun2int(Sysfunstr)
 
 		if len(s) >= 1 && s[len(s)-1] == '>' {
-			f.unfinished = true
-			//			fmt.Println("unfinished???")
+			f.Unfinished = true
+			//			fmt.Println("Unfinished???")
 			seek4(&s, '<')
 			seek0(&s, '<')
 			seek0(&s, ' ')
@@ -308,56 +310,91 @@ func parse(s []byte) (f fun) {
 	}
 
 	sysretstr = seek4(&s, ' ')
-	fmt.Sscanf(string(sysretstr), "%d", &f.reterr)
+	fmt.Sscanf(string(sysretstr), "%d", &f.Reterr)
 
-	if f.sysfun == 13 && len(s) >= 10 {
-		syssig = s[:10]
-		seek2(&syssig, '(')
-		seek4(&syssig, ',')
-		if len(syssig) >= 1 {
-			syssig = syssig[:len(syssig)-1]
-			f.sig = syssig2int(syssig)
+	if f.Sysfun == 13 && len(s) >= 10 {
+		sysSig = s[:10]
+		seek2(&sysSig, '(')
+		seek4(&sysSig, ',')
+		if len(sysSig) >= 1 {
+			sysSig = sysSig[:len(sysSig)-1]
+			f.Sig = sysSig2int(sysSig)
 		}
 		return
 	}
 
-	if f.sysfun == 59 {
+	if f.Sysfun == 59 {
 		for {
 			sysattr = seek5(&s)
 			seek5(&s)
 			if len(sysattr) == 0 {
 				break
 			}
-			f.xargs = append(f.xargs, string(sysattr))
+			f.Xargs = append(f.Xargs, string(sysattr))
 		}
 	}
 
 	// FIXME: handle the arguments
-	//fmt.Println("FIXME RESUMED /PID",f.tid,"/ /",f.sysfun,"/ (",f.reterr,"):",string(s))
+	//fmt.Println("FIXME Resumed /PID",f.Tid,"/ /",f.Sysfun,"/ (",f.Reterr,"):",string(s))
 
-	//	fmt.Println("FIXME NORMAL sig=",f.sig," /",f.sysfun,"/ (",f.reterr,"):",string(s))
+	//	fmt.Println("FIXME NORMAL Sig=",f.Sig," /",f.Sysfun,"/ (",f.Reterr,"):",string(s))
 
-	//	if f.sysfun == 0 {die()}
+	//	if f.Sysfun == 0 {die()}
 
 	return f
 }
 
-func main() {
-	// TODO hook up strace here
+func getgbin() (s string, e error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("No current wd")
+	}
+	for {
+		wd = filepath.Dir(wd)
+		s = wd + "/" + mpoint_gbin
+		//		fmt.Println(s)
+		_, err := os.Stat(s)
+		if err == nil {
+			return s, nil
+		}
+		if "/" == wd {
+			break
+		}
+	}
+	return "", fmt.Errorf("goen dir not found")
+}
 
+func main() {
+	// TODO hook up strace output here
 	//	q := strings.NewReader(input)
 	q, _ := os.Open("test/kernelmake.pid")
 	r := bufio.NewReader(q)
 
-	// TODO lookup goenbin
+	gb, er4 := getgbin()
+	if er4 != nil {
+		fmt.Println(er4)
+		return
+	}
+
+	s, errr := os.OpenFile(gb+"/trace", os.O_WRONLY, 0200)
+	if errr != nil {
+		fmt.Println(errr)
+		return
+	}
+	t := bufio.NewWriter(s)
+	enc := gob.NewEncoder(t)
 
 	for {
-		l, err := r.ReadString('\n')
-		f := parse([]byte(l))
+		l, err0 := r.ReadString('\n')
+		var f Fun = parse([]byte(l))
 
-		_ = f
-
+		err := enc.Encode(f)
 		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if err0 != nil {
 			break
 		}
 	}
