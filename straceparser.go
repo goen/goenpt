@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -352,7 +353,7 @@ func getgbin() (s string, e error) {
 	for {
 		wd = filepath.Dir(wd)
 		s = wd + "/" + mpoint_gbin
-		//		fmt.Println(s)
+		//				fmt.Println(s)
 		_, err := os.Stat(s)
 		if err == nil {
 			return s, nil
@@ -365,10 +366,26 @@ func getgbin() (s string, e error) {
 }
 
 func main() {
-	// TODO hook up strace output here
-	//	q := strings.NewReader(input)
-	q, _ := os.Open("test/kernelmake.pid")
-	r := bufio.NewReader(q)
+
+	arg := []string{"-ttt", "-xx", "-q", "-f", "-e", "trace=process,signal,ipc"}
+	for y := range os.Args[1:] {
+		arg = append(arg, os.Args[y+1])
+	}
+	_ = arg
+
+	//	fmt.Println("strace:", arg)
+		cmd := exec.Command("strace", arg...)
+	//	cmd := exec.Command("strace", "-ttt", "-xx", "-q", "-f", "-e", "trace=process,signal,ipc","go","build")
+	//	cmd := exec.Command("cat", "test/kernelmake.pid")
+
+	stdout, er3 := cmd.StderrPipe()
+	if er3 != nil {
+		fmt.Println(er3)
+		return
+
+	}
+
+	//	go stracer(&rtrace, &stop, &stopl)
 
 	gb, er4 := getgbin()
 	if er4 != nil {
@@ -376,26 +393,57 @@ func main() {
 		return
 	}
 
+	fmt.Println("Waiting for the pipeline")
+
+	//	s, errr := os.Open(gb+"/trace")
 	s, errr := os.OpenFile(gb+"/trace", os.O_WRONLY, 0200)
 	if errr != nil {
 		fmt.Println(errr)
 		return
 	}
+	defer s.Close()
+
+	// now run strace
+	er6 := cmd.Start()
+	if er6 != nil {
+		fmt.Println(er6)
+		return
+	}
+
+	// read command's stdout line by line
+	in := bufio.NewScanner(stdout)
+
 	t := bufio.NewWriter(s)
 	enc := gob.NewEncoder(t)
+	_ = enc
+	//	r := bufio.NewReader(rtrace)
+
+	fmt.Println("going")
 
 	for {
-		l, err0 := r.ReadString('\n')
-		var f Fun = parse([]byte(l))
-
-		err := enc.Encode(f)
-		if err != nil {
-			fmt.Println(err)
-			return
+		if !in.Scan() {
+			t.Flush()
+			break
 		}
 
-		if err0 != nil {
+		l := in.Text()
+//		fmt.Println(l)
+		f := parse([]byte(l))
+		err := enc.Encode(f)
+		if err != nil {
+			fmt.Println("Pipe detach:", err)
 			break
 		}
 	}
+	if er9 := in.Err(); er9 != nil {
+		fmt.Println("error:", er9)
+	}
+
+	er8 := cmd.Wait()
+	if er8 != nil {
+		fmt.Println("error:", er8)
+	}
+
+//	fmt.Println("gone")
+//	time.Sleep(100000000)
 }
