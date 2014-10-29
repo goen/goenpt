@@ -124,13 +124,6 @@ type fun struct {
 	unfinished bool //beginning
 	resumed    bool //end
 	signal     bool
-}
-
-type context struct {
-	mainpid uint32
-}
-
-type exectra struct {
 	xargs []string //exec & args
 }
 
@@ -240,7 +233,7 @@ func seek5(s *[]byte) (o []byte) {
 	return o
 }
 
-func (p context) parse(s []byte) (f fun, e exectra) {
+func parse(s []byte) (f fun) {
 
 	seek0(&s, 10)
 
@@ -335,7 +328,7 @@ func (p context) parse(s []byte) (f fun, e exectra) {
 			if len(sysattr) == 0 {
 				break
 			}
-			e.xargs = append(e.xargs, string(sysattr))
+			f.xargs = append(f.xargs, string(sysattr))
 		}
 	}
 
@@ -346,7 +339,7 @@ func (p context) parse(s []byte) (f fun, e exectra) {
 
 	//	if f.sysfun == 0 {die()}
 
-	return f, e
+	return f
 }
 
 func main() {
@@ -354,14 +347,11 @@ func main() {
 	q, _ := os.Open("test/kernelmake.pid")
 	r := bufio.NewReader(q)
 
-	var c context
-
 	for {
 		l, err := r.ReadString('\n')
-		f, e := c.parse([]byte(l))
+		f := parse([]byte(l))
 
 		_ = f
-		_ = e
 
 		if err != nil {
 			break
