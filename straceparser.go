@@ -343,9 +343,13 @@ func parse(s []byte) (f fun) {
 }
 
 func main() {
+	// TODO hook up strace here
+
 	//	q := strings.NewReader(input)
 	q, _ := os.Open("test/kernelmake.pid")
 	r := bufio.NewReader(q)
+
+	// TODO lookup goenbin
 
 	for {
 		l, err := r.ReadString('\n')
